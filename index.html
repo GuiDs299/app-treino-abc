@@ -14,6 +14,23 @@
       --shadow: 0 10px 30px rgba(0,0,0,.35);
       --r:18px;
     }
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --muted: #64748b;
+      --text: #0f172a;
+      --line: rgba(0,0,0,.1);
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+    /* Ajustes finos de transparência para o Modo Claro */
+    [data-theme="light"] .field { background: rgba(0,0,0,.04); }
+    [data-theme="light"] input, 
+    [data-theme="light"] select, 
+    [data-theme="light"] button { background: rgba(0,0,0,.03); }
+    [data-theme="light"] .exercise,
+    [data-theme="light"] .day { background: rgba(0,0,0,.02); }
+    [data-theme="light"] .footerbar { background: rgba(248, 250, 252, 0.9); }
+    [data-theme="light"] .edit-block { background: rgba(0,0,0,.02); }
     *{box-sizing:border-box}
     body{
       margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -148,7 +165,13 @@
     .day.train{border-color: rgba(76,201,240,.45); background: rgba(76,201,240,.10)}
     .day.rest{border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.10)}
     .day.off{opacity:.35}
-    canvas{width:100%; height:240px; background: rgba(0,0,0,.18); border:1px solid var(--line); border-radius: 14px;}
+    canvas {
+      width: 100%; 
+      height: 240px; 
+      background: rgba(0, 0, 0, 0.05); /* Fundo bem sutil que funciona nos dois temas */
+      border: 1px solid var(--line); 
+      border-radius: 14px;
+    }
     .footerbar{
       position:fixed; left:0; right:0; bottom:0;
       background: rgba(11,15,20,.82);
@@ -332,7 +355,13 @@
 
 <div class="modal" id="modalConfig">
   <div class="modal-box">
-    <div class="modal-hd">⚙️ Configurar Treinos <button class="ghost" id="btnCloseConfig" style="padding:4px 8px">✕</button></div>
+    <div class="modal-hd">
+      <span>⚙️ Configurar Treinos</span>
+      <div class="row">
+        <button class="ghost" id="btnToggleTheme" style="padding:4px 8px" title="Alternar Tema">☀️</button>
+        <button class="ghost" id="btnCloseConfig" style="padding:4px 8px">✕</button>
+      </div>
+    </div>
     <div class="modal-bd" id="configBody"></div>
     <div class="modal-ft">
       <button class="ghost" onclick="window._addWk()">+ Novo Treino (Ex: D)</button>
@@ -396,7 +425,8 @@
     active: "A",
     logs: {}, 
     bodyweight: [],
-    workouts: JSON.parse(JSON.stringify(defaultWorkouts)) 
+    workouts: JSON.parse(JSON.stringify(defaultWorkouts)) ,
+    theme: "dark"
   });
 
   const load = () => {
@@ -680,29 +710,78 @@
   }
 
   function drawChart(){
-    const canvas = $("chart"); const ctx = canvas.getContext("2d");
-    const dpr = window.devicePixelRatio || 1; const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr); ctx.scale(dpr, dpr);
+    const canvas = $("chart"); 
+    const ctx = canvas.getContext("2d");
+    
+    // Captura as cores do CSS em tempo real
+    const root = getComputedStyle(document.documentElement);
+    const cLine = root.getPropertyValue('--line').trim();
+    const cText = root.getPropertyValue('--text').trim();
+    const cMuted = root.getPropertyValue('--muted').trim();
+    const cAccent = root.getPropertyValue('--accent').trim();
+    const cAccent2 = root.getPropertyValue('--accent2').trim();
+
+    const dpr = window.devicePixelRatio || 1; 
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * dpr); 
+    canvas.height = Math.floor(rect.height * dpr); 
+    ctx.scale(dpr, dpr);
+
     ctx.clearRect(0,0,rect.width, rect.height);
 
-    const ex = decodeURIComponent($("chartExercise").value || ""); const series = getExerciseSeries(ex);
-    $("chartHint").textContent = series.length ? `Mostrando ${series.length} pontos de carga (kg) para: ${ex}` : `Sem dados de carga ainda para: ${ex} (registre “carga (kg)” em um treino).`;
+    const ex = decodeURIComponent($("chartExercise").value || ""); 
+    const series = getExerciseSeries(ex);
+
+    $("chartHint").textContent = series.length 
+      ? `Mostrando ${series.length} pontos de carga (kg) para: ${ex}` 
+      : `Sem dados de carga ainda para: ${ex}.`;
 
     const pad = 18; const W = rect.width, H = rect.height;
-    ctx.strokeStyle = "rgba(255,255,255,.08)"; ctx.lineWidth = 1;
-    for(let i=0;i<5;i++){ const y = pad + i*((H-2*pad)/4); ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke(); }
+    
+    // Grade dinâmica
+    ctx.strokeStyle = cLine; 
+    ctx.lineWidth = 1;
+    for(let i=0;i<5;i++){ 
+      const y = pad + i*((H-2*pad)/4); 
+      ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke(); 
+    }
 
-    if(series.length < 2){ ctx.fillStyle = "rgba(147,164,184,.9)"; ctx.font = "12px system-ui"; ctx.fillText("Sem pontos suficientes para gráfico.", pad, H/2); return; }
+    if(series.length < 2){ 
+      ctx.fillStyle = cMuted; 
+      ctx.font = "12px system-ui"; 
+      ctx.fillText("Sem pontos suficientes para gráfico.", pad, H/2); 
+      return; 
+    }
 
-    const values = series.map(p=>p.value); const min = Math.min(...values); const max = Math.max(...values); const range = Math.max(1, max - min);
-    const xStep = (W - 2*pad) / (series.length - 1); const yOf = (v) => (H - pad) - ((v - min)/range) * (H - 2*pad);
+    const values = series.map(p=>p.value); 
+    const min = Math.min(...values); 
+    const max = Math.max(...values); 
+    const range = Math.max(1, max - min);
+    const xStep = (W - 2*pad) / (series.length - 1); 
+    const yOf = (v) => (H - pad) - ((v - min)/range) * (H - 2*pad);
 
-    ctx.strokeStyle = "rgba(76,201,240,.95)"; ctx.lineWidth = 2; ctx.beginPath();
-    series.forEach((p,i) => { const x = pad + i*xStep; const y = yOf(p.value); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
-    ctx.fillStyle = "rgba(167,139,250,.95)";
-    series.forEach((p,i) => { const x = pad + i*xStep; const y = yOf(p.value); ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); });
-    ctx.fillStyle = "rgba(234,241,251,.9)"; ctx.font = "12px system-ui";
-    ctx.fillText(`min: ${min}kg`, pad, pad-4); ctx.fillText(`max: ${max}kg`, W - pad - 70, pad-4);
+    // Linha principal
+    ctx.strokeStyle = cAccent; 
+    ctx.lineWidth = 2; 
+    ctx.beginPath();
+    series.forEach((p,i) => { 
+      const x = pad + i*xStep; const y = yOf(p.value); 
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); 
+    }); 
+    ctx.stroke();
+
+    // Pontos (bolinhas)
+    ctx.fillStyle = cAccent2;
+    series.forEach((p,i) => { 
+      const x = pad + i*xStep; const y = yOf(p.value); 
+      ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); 
+    });
+
+    // Textos Min/Max
+    ctx.fillStyle = cText; 
+    ctx.font = "12px system-ui";
+    ctx.fillText(`min: ${min}kg`, pad, pad-4); 
+    ctx.fillText(`max: ${max}kg`, W - pad - 70, pad-4);
   }
 
   function markToday(type){
@@ -844,6 +923,26 @@
   $("btnImport").addEventListener("click", importData);
 
   render();
+  // ========= Lógica do Tema Claro/Escuro =========
+  function applyTheme(theme) {
+    // 1. Muda as variáveis de cor do CSS
+    document.documentElement.setAttribute("data-theme", theme);
+    // 2. Troca o ícone do botão
+    $("btnToggleTheme").textContent = theme === "light" ? "🌙" : "☀️";
+    // 3. Muda a cor da barra de status do celular
+    document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "light" ? "#f8fafc" : "#0b0f14");
+  }
+
+  // Aplica o tema salvo logo que o app abre
+  if(!state.theme) state.theme = "dark"; // Proteção para quem já tinha o app salvo
+  applyTheme(state.theme);
+
+  // Evento de clique no botão do Modal
+  $("btnToggleTheme").addEventListener("click", () => {
+    state.theme = state.theme === "light" ? "dark" : "light";
+    applyTheme(state.theme);
+    save(); // Salva a preferência no localStorage
+  });
 })();
 </script>
 </body>

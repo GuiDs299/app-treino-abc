@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0b0f14" />  
   <meta charset="utf-8" />
@@ -156,21 +155,29 @@
       backdrop-filter: blur(8px);
       border-top:1px solid var(--line);
       padding:10px 12px;
+      z-index: 100;
     }
     .footerbar .wrap{display:flex; gap:10px; justify-content:space-between; align-items:center; flex-wrap:wrap;}
+    .footer-tabs{display:flex; gap:6px;}
     .toast{
       position:fixed; left:50%; transform: translateX(-50%);
       bottom:78px; background: rgba(0,0,0,.75); border:1px solid var(--line);
       padding:10px 12px; border-radius: 999px; font-size:12px; color:var(--text);
       opacity:0; pointer-events:none; transition: opacity .2s ease;
+      z-index: 999;
     }
     .toast.show{opacity:1}
-    .hint{font-size:12px; color:var(--muted); line-height:1.3}
-    .tag{
-      font-size:11px; padding:5px 8px; border-radius: 999px;
-      border:1px solid var(--line); background: rgba(255,255,255,.02); color: var(--muted);
-      display:inline-flex; gap:6px; align-items:center;
-    }
+    
+    /* --- Modal de Configuração --- */
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); backdrop-filter:blur(5px); z-index:9999; padding:20px 10px; overflow-y:auto; align-items:flex-start; justify-content:center; }
+    .modal.show { display:flex; }
+    .modal-box { background:var(--bg); border:1px solid var(--line); border-radius:var(--r); width:100%; max-width:800px; box-shadow:var(--shadow); margin-bottom: 40px;}
+    .modal-hd { padding:14px 18px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; font-weight:800; font-size:16px; }
+    .modal-bd { padding:18px; display:flex; flex-direction:column; gap:20px; }
+    .modal-ft { padding:14px 18px; border-top:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .edit-block { background:rgba(255,255,255,.02); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    .edit-row { display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:8px; margin-top:8px; align-items:center; }
+    @media (max-width:600px){ .edit-row { grid-template-columns:1fr; background:rgba(0,0,0,.2); padding:10px; border-radius:10px; border:1px solid var(--line); } }
   </style>
 </head>
 <body>
@@ -178,7 +185,7 @@
   <header>
     <div class="toprow">
       <div>
-        <h1>Treino ABC (Superior) — Progresso</h1>
+        <h1>Meu Treino — Progresso</h1>
         <div class="muted" id="todayLine"></div>
       </div>
       <div class="row">
@@ -189,45 +196,38 @@
     </div>
 
     <div class="row">
-      <div class="tabs">
-        <button id="tabA" class="primary">Treino A</button>
-        <button id="tabB">Treino B</button>
-        <button id="tabC">Treino C</button>
-      </div>
-      <div class="row">
+      <div class="tabs" id="tabsContainer"></div>
+      <button class="ghost small" id="btnEditWorkouts" style="margin-left: auto;">⚙️ Editar Treinos</button>
+    </div>
+    
+    <div class="row" style="margin-top: 8px;">
         <button id="btnMarkTrain" class="good">Marcar “treino feito” hoje</button>
         <button id="btnMarkRest" class="">Marcar “descanso” hoje</button>
         <button id="btnClearToday" class="danger">Limpar registros de hoje</button>
-      </div>
     </div>
   </header>
 
   <div class="grid">
-    <!-- LEFT: workout -->
     <section class="card" id="workoutCard">
       <div class="hd">
         <div>
-          <div style="font-weight:900" id="workoutTitle">Treino A</div>
-          <div class="muted" id="workoutSubtitle">Peito + Tríceps + Abdômen</div>
-        </div>
-        <div class="row">
-          <span class="tag">🎯 Hipertrofia</span>
-          <span class="tag">⏱ 60–90s</span>
+          <div style="font-weight:900" id="workoutTitle">Carregando...</div>
+          <div class="muted" id="workoutSubtitle"></div>
         </div>
       </div>
       <div class="bd">
         <div class="kpi">
           <div class="box">
             <div class="v" id="kpiSets">0</div>
-            <div class="t">Séries registradas hoje</div>
+            <div class="t">Séries hoje</div>
           </div>
           <div class="box">
             <div class="v" id="kpiVolume">0</div>
-            <div class="t">Volume estimado (kg) hoje</div>
+            <div class="t">Volume (kg) hoje</div>
           </div>
           <div class="box">
             <div class="v" id="kpiDone">0%</div>
-            <div class="t">Progresso do treino</div>
+            <div class="t">Progresso</div>
           </div>
         </div>
 
@@ -253,7 +253,6 @@
       </div>
     </section>
 
-    <!-- RIGHT: tracking -->
     <aside class="card">
       <div class="hd">
         <div style="font-weight:900">Acompanhamento</div>
@@ -264,7 +263,7 @@
           <div class="ex-top">
             <div>
               <div class="ex-name">Peso corporal</div>
-              <div class="ex-meta">Registre 1x por semana (ou mais, se quiser)</div>
+              <div class="ex-meta">Registre 1x por semana</div>
             </div>
           </div>
           <div class="fields" style="grid-template-columns: 1fr 1fr;">
@@ -274,7 +273,7 @@
             </div>
             <div class="field">
               <label>Ação</label>
-              <button id="btnSaveBW" class="primary">Salvar peso hoje</button>
+              <button id="btnSaveBW" class="primary">Salvar hoje</button>
             </div>
           </div>
           <div class="muted" id="bwLast"></div>
@@ -293,7 +292,7 @@
         <div class="exercise">
           <div class="ex-top">
             <div>
-              <div class="ex-name">Gráfico de carga (por exercício)</div>
+              <div class="ex-name">Gráfico de carga</div>
               <div class="ex-meta">Escolha um exercício e veja a evolução</div>
             </div>
           </div>
@@ -307,19 +306,9 @@
           <div class="ex-top">
             <div>
               <div class="ex-name">Histórico (últimos 10 registros)</div>
-              <div class="ex-meta">Treinos e descansos marcados</div>
             </div>
           </div>
           <div id="history"></div>
-        </div>
-
-        <div class="sep"></div>
-
-        <div class="hint">
-          <b>Regras simples (raiz):</b><br/>
-          • Compostos: 6–10 reps, 3–5 séries, descanso 90s<br/>
-          • Isoladores: 10–15 reps, 2–4 séries, descanso 60s<br/>
-          • Pare 1–2 reps antes da falha na maior parte do tempo (RIR 1–2)
         </div>
       </div>
     </aside>
@@ -333,9 +322,7 @@
       <span class="pill" id="restTimer">00:00</span>
     </div>
     <div class="row">
-      <button id="btnQuickA">A</button>
-      <button id="btnQuickB">B</button>
-      <button id="btnQuickC">C</button>
+      <div class="footer-tabs" id="footerTabsContainer"></div>
       <button id="btnResetAll" class="danger">Zerar tudo</button>
     </div>
   </div>
@@ -343,52 +330,20 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="modal" id="modalConfig">
+  <div class="modal-box">
+    <div class="modal-hd">⚙️ Configurar Treinos <button class="ghost" id="btnCloseConfig" style="padding:4px 8px">✕</button></div>
+    <div class="modal-bd" id="configBody"></div>
+    <div class="modal-ft">
+      <button class="ghost" onclick="window._addWk()">+ Novo Treino (Ex: D)</button>
+      <button class="primary" id="btnSaveConfig">Salvar Alterações</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
-  // ========= Data model =========
-  const PROGRAM = {
-    A: {
-      title: "Treino A",
-      subtitle: "Peito + Tríceps + Abdômen",
-      exercises: [
-        { name:"Supino reto (barra)", target:"4x 6–8", type:"composto" },
-        { name:"Supino inclinado (halter)", target:"4x 8–10", type:"composto" },
-        { name:"Crucifixo (máquina/halter)", target:"3x 10–12", type:"isolador" },
-        { name:"Paralelas / Mergulho", target:"3x 8–12", type:"composto" },
-        { name:"Tríceps testa (barra W)", target:"3x 8–10", type:"isolador" },
-        { name:"Tríceps corda", target:"3x 10–12", type:"isolador" },
-        { name:"Abdominal (máquina/infra)", target:"3x 15–20", type:"core" },
-      ],
-    },
-    B: {
-      title: "Treino B",
-      subtitle: "Costas + Bíceps + Ombro saudável",
-      exercises: [
-        { name:"Barra fixa", target:"4x 6–10", type:"composto" },
-        { name:"Remada curvada (barra)", target:"4x 6–8", type:"composto" },
-        { name:"Puxada frente (neutra/média)", target:"3x 8–10", type:"composto" },
-        { name:"Remada unilateral (halter)", target:"3x 8–10", type:"composto" },
-        { name:"Rosca direta (barra)", target:"3x 8–10", type:"isolador" },
-        { name:"Rosca alternada (banco inclinado)", target:"3x 10–12", type:"isolador" },
-        { name:"Face pull", target:"3x 12–15", type:"prehab" },
-      ],
-    },
-    C: {
-      title: "Treino C",
-      subtitle: "Ombro + Complemento de Braços + Core",
-      exercises: [
-        { name:"Desenvolvimento (halter sentado)", target:"4x 6–8", type:"composto" },
-        { name:"Elevação lateral", target:"4x 10–12", type:"isolador" },
-        { name:"Posterior (elevação lateral inclinada)", target:"3x 12", type:"isolador" },
-        { name:"Encolhimento (trapézio)", target:"3x 10–12", type:"isolador" },
-        { name:"Rosca martelo", target:"3x 8–10", type:"isolador" },
-        { name:"Tríceps banco / coice", target:"3x 10–12", type:"isolador" },
-        { name:"Prancha", target:"3x 30–40s", type:"core" },
-      ],
-    }
-  };
-
-  const STORAGE_KEY = "treino_abc_v1";
+  const STORAGE_KEY = "treino_abc_v2"; 
 
   const todayKey = () => {
     const d = new Date();
@@ -398,10 +353,50 @@
     return `${y}-${m}-${day}`;
   };
 
+  const defaultWorkouts = {
+    A: {
+      title: "Treino A", subtitle: "Peito + Tríceps + Abdômen",
+      exercises: [
+        { name:"Supino reto (barra)", target:"4x 6–8", type:"composto" },
+        { name:"Supino inclinado (halter)", target:"4x 8–10", type:"composto" },
+        { name:"Crucifixo (máquina/halter)", target:"3x 10–12", type:"isolador" },
+        { name:"Paralelas / Mergulho", target:"3x 8–12", type:"composto" },
+        { name:"Tríceps testa (barra W)", target:"3x 8–10", type:"isolador" },
+        { name:"Tríceps corda", target:"3x 10–12", type:"isolador" },
+        { name:"Abdominal (máquina/infra)", target:"3x 15–20", type:"core" },
+      ]
+    },
+    B: {
+      title: "Treino B", subtitle: "Costas + Bíceps + Ombro saudável",
+      exercises: [
+        { name:"Barra fixa", target:"4x 6–10", type:"composto" },
+        { name:"Remada curvada (barra)", target:"4x 6–8", type:"composto" },
+        { name:"Puxada frente (neutra/média)", target:"3x 8–10", type:"composto" },
+        { name:"Remada unilateral (halter)", target:"3x 8–10", type:"composto" },
+        { name:"Rosca direta (barra)", target:"3x 8–10", type:"isolador" },
+        { name:"Rosca alternada (banco inclinado)", target:"3x 10–12", type:"isolador" },
+        { name:"Face pull", target:"3x 12–15", type:"prehab" },
+      ]
+    },
+    C: {
+      title: "Treino C", subtitle: "Ombro + Complemento de Braços + Core",
+      exercises: [
+        { name:"Desenvolvimento (halter sentado)", target:"4x 6–8", type:"composto" },
+        { name:"Elevação lateral", target:"4x 10–12", type:"isolador" },
+        { name:"Posterior (elevação lateral inclinada)", target:"3x 12", type:"isolador" },
+        { name:"Encolhimento (trapézio)", target:"3x 10–12", type:"isolador" },
+        { name:"Rosca martelo", target:"3x 8–10", type:"isolador" },
+        { name:"Tríceps banco / coice", target:"3x 10–12", type:"isolador" },
+        { name:"Prancha", target:"3x 30–40s", type:"core" },
+      ]
+    }
+  };
+
   const stateDefault = () => ({
     active: "A",
-    logs: {}, // date -> { type: "train"/"rest", workout?: "A"/"B"/"C", entries?: {...}, note?: "" }
-    bodyweight: [], // [{date, kg}]
+    logs: {}, 
+    bodyweight: [],
+    workouts: JSON.parse(JSON.stringify(defaultWorkouts)) 
   });
 
   const load = () => {
@@ -409,6 +404,7 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return stateDefault();
       const parsed = JSON.parse(raw);
+      if(!parsed.workouts) parsed.workouts = JSON.parse(JSON.stringify(defaultWorkouts));
       return { ...stateDefault(), ...parsed };
     }catch(e){
       return stateDefault();
@@ -422,7 +418,6 @@
 
   let state = load();
 
-  // ========= UI helpers =========
   const $ = (id) => document.getElementById(id);
 
   const toast = (msg) => {
@@ -456,18 +451,48 @@
     save();
     render();
   };
+  
+  function renderTabs() {
+    const container = $("tabsContainer");
+    const footerContainer = $("footerTabsContainer");
+    container.innerHTML = "";
+    footerContainer.innerHTML = "";
+    
+    Object.keys(state.workouts).forEach(key => {
+      const btn = document.createElement("button");
+      btn.textContent = `Treino ${key}`;
+      if(state.active === key) btn.classList.add("primary");
+      btn.addEventListener("click", () => setActive(key));
+      container.appendChild(btn);
 
-  // ========= Render workout =========
+      const btnFoot = document.createElement("button");
+      btnFoot.textContent = key;
+      if(state.active === key) btnFoot.style.border = "1px solid var(--accent)";
+      btnFoot.addEventListener("click", () => setActive(key));
+      footerContainer.appendChild(btnFoot);
+    });
+  }
+
   function renderWorkout(){
     const w = state.active;
-    const prog = PROGRAM[w];
+    const prog = state.workouts[w];
+    
+    if(!prog) {
+        const firstKey = Object.keys(state.workouts)[0];
+        if(firstKey) { setActive(firstKey); return; } 
+        else {
+            $("workoutTitle").textContent = "Nenhum treino";
+            $("workoutSubtitle").textContent = "Adicione um treino nas configurações";
+            $("exerciseList").innerHTML = "";
+            renderTabs();
+            return;
+        }
+    }
 
     $("workoutTitle").textContent = prog.title;
     $("workoutSubtitle").textContent = prog.subtitle;
 
-    $("tabA").classList.toggle("primary", w==="A");
-    $("tabB").classList.toggle("primary", w==="B");
-    $("tabC").classList.toggle("primary", w==="C");
+    renderTabs();
 
     const list = $("exerciseList");
     list.innerHTML = "";
@@ -475,7 +500,7 @@
     const tlog = getTodayLog();
     tlog.workout = w;
     tlog.entries ||= {};
-    tlog.type ||= ""; // train/rest/empty
+    tlog.type ||= "";
     save();
 
     prog.exercises.forEach((ex, idx) => {
@@ -498,18 +523,9 @@
       const fields = document.createElement("div");
       fields.className = "fields";
       fields.innerHTML = `
-        <div class="field">
-          <label>Carga (kg)</label>
-          <input inputmode="decimal" placeholder="ex: 80" value="${entry.load ?? ""}" data-field="load" data-ex="${encodeURIComponent(key)}" />
-        </div>
-        <div class="field">
-          <label>Séries (nº)</label>
-          <input inputmode="numeric" placeholder="ex: 4" value="${entry.sets ?? ""}" data-field="sets" data-ex="${encodeURIComponent(key)}" />
-        </div>
-        <div class="field">
-          <label>Reps (média)</label>
-          <input inputmode="numeric" placeholder="ex: 8" value="${entry.reps ?? ""}" data-field="reps" data-ex="${encodeURIComponent(key)}" />
-        </div>
+        <div class="field"><label>Carga (kg)</label><input inputmode="decimal" placeholder="ex: 80" value="${entry.load ?? ""}" data-field="load" data-ex="${encodeURIComponent(key)}" /></div>
+        <div class="field"><label>Séries (nº)</label><input inputmode="numeric" placeholder="ex: 4" value="${entry.sets ?? ""}" data-field="sets" data-ex="${encodeURIComponent(key)}" /></div>
+        <div class="field"><label>Reps (média)</label><input inputmode="numeric" placeholder="ex: 8" value="${entry.reps ?? ""}" data-field="reps" data-ex="${encodeURIComponent(key)}" /></div>
       `;
 
       wrap.appendChild(top);
@@ -517,7 +533,6 @@
       list.appendChild(wrap);
     });
 
-    // input listeners
     list.querySelectorAll("input").forEach(inp => {
       inp.addEventListener("input", (e) => {
         const ex = decodeURIComponent(e.target.dataset.ex);
@@ -526,7 +541,6 @@
         const tlog = getTodayLog();
         tlog.entries[ex] ||= { load:"", sets:"", reps:"" };
         tlog.entries[ex][field] = val;
-        // if user starts logging, assume it's a training day
         if(tlog.type !== "rest") tlog.type = "train";
         save();
         renderKPIs();
@@ -552,9 +566,12 @@
   function calcKPIs(){
     const tlog = getTodayLog();
     const entries = tlog.entries || {};
-    let sets = 0, volume = 0, done = 0, total = PROGRAM[state.active].exercises.length;
+    const prog = state.workouts[state.active];
+    if(!prog) return { sets: 0, volume: 0, pct: 0 };
+    
+    let sets = 0, volume = 0, done = 0, total = prog.exercises.length;
 
-    PROGRAM[state.active].exercises.forEach(ex => {
+    prog.exercises.forEach(ex => {
       const e = entries[ex.name];
       const has = e && (String(e.load||"").trim() !== "" || String(e.reps||"").trim() !== "" || String(e.sets||"").trim() !== "");
       if(has) done++;
@@ -577,9 +594,7 @@
     $("kpiDone").textContent = `${pct}%`;
   }
 
-  // ========= Rest timer =========
   let rest = { running:false, endAt:0, iv:null };
-
   function tickRest(){
     const now = Date.now();
     const left = Math.max(0, rest.endAt - now);
@@ -587,340 +602,248 @@
     const mm = String(Math.floor(s/60)).padStart(2,"0");
     const ss = String(s%60).padStart(2,"0");
     $("restTimer").textContent = `${mm}:${ss}`;
-    if(left<=0){
-      stopRest();
-      toast("Descanso concluído");
-    }
+    if(left<=0){ stopRest(); toast("Descanso concluído"); }
   }
-
   function startRest(){
     const sec = parseInt($("restPreset").value, 10);
-    rest.running = true;
-    rest.endAt = Date.now() + sec*1000;
+    rest.running = true; rest.endAt = Date.now() + sec*1000;
     $("restState").textContent = `Descanso: rodando (${sec}s)`;
-    clearInterval(rest.iv);
-    rest.iv = setInterval(tickRest, 200);
-    tickRest();
+    clearInterval(rest.iv); rest.iv = setInterval(tickRest, 200); tickRest();
   }
-
   function stopRest(){
-    rest.running = false;
-    clearInterval(rest.iv);
-    $("restState").textContent = "Descanso: parado";
-    $("restTimer").textContent = "00:00";
+    rest.running = false; clearInterval(rest.iv);
+    $("restState").textContent = "Descanso: parado"; $("restTimer").textContent = "00:00";
   }
 
-  // ========= Calendar =========
   function renderCalendar(){
-    const cal = $("calendar");
-    cal.innerHTML = "";
-
-    const now = new Date();
-    // show last 30 days including today
-    const days = [];
+    const cal = $("calendar"); cal.innerHTML = "";
+    const now = new Date(); const days = [];
     for(let i=29;i>=0;i--){
-      const d = new Date(now);
-      d.setDate(now.getDate()-i);
-      const y = d.getFullYear();
-      const m = String(d.getMonth()+1).padStart(2,"0");
-      const day = String(d.getDate()).padStart(2,"0");
-      const key = `${y}-${m}-${day}`;
-      days.push({ date:d, key });
+      const d = new Date(now); d.setDate(now.getDate()-i);
+      const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,"0"); const day = String(d.getDate()).padStart(2,"0");
+      days.push({ date:d, key: `${y}-${m}-${day}` });
     }
-
     const dow = ["D","S","T","Q","Q","S","S"];
-
-    days.forEach(({date, key}, idx) => {
-      const div = document.createElement("div");
-      div.className = "day";
-      const log = state.logs[key];
-      const type = log?.type || "";
-      const wk = log?.workout || "";
-      if(type==="train") div.classList.add("train");
-      if(type==="rest") div.classList.add("rest");
-
-      const dnum = date.getDate();
-      const dayName = dow[date.getDay()];
-      div.innerHTML = `<div class="n">${dnum}</div><div class="s">${dayName} ${type==="train" ? wk : (type==="rest" ? "R" : "")}</div>`;
-
+    days.forEach(({date, key}) => {
+      const div = document.createElement("div"); div.className = "day";
+      const log = state.logs[key]; const type = log?.type || ""; const wk = log?.workout || "";
+      if(type==="train") div.classList.add("train"); if(type==="rest") div.classList.add("rest");
+      div.innerHTML = `<div class="n">${date.getDate()}</div><div class="s">${dow[date.getDay()]} ${type==="train" ? wk : (type==="rest" ? "R" : "")}</div>`;
       div.addEventListener("click", () => {
-        // cycle: empty -> train -> rest -> empty
         state.logs[key] ||= { type:"", workout: state.active, entries:{} };
         const t = state.logs[key].type || "";
-        if(t==="") state.logs[key].type = "train";
-        else if(t==="train") state.logs[key].type = "rest";
-        else state.logs[key].type = "";
+        if(t==="") state.logs[key].type = "train"; else if(t==="train") state.logs[key].type = "rest"; else state.logs[key].type = "";
         if(state.logs[key].type==="train" && !state.logs[key].workout) state.logs[key].workout = state.active;
-        save();
-        renderCalendar();
-        renderHistory();
+        save(); renderCalendar(); renderHistory();
       });
-
       cal.appendChild(div);
     });
   }
 
-  // ========= History =========
   function renderHistory(){
-    const box = $("history");
-    const keys = Object.keys(state.logs).sort().reverse();
-    const rows = [];
-
+    const box = $("history"); const keys = Object.keys(state.logs).sort().reverse(); const rows = [];
     for(const k of keys){
-      const log = state.logs[k];
-      if(!log?.type) continue;
-      const type = log.type === "train" ? "Treino" : "Descanso";
-      const sub = log.type === "train" ? `(${log.workout || "-"})` : "";
-      rows.push({ k, type, sub });
+      const log = state.logs[k]; if(!log?.type) continue;
+      rows.push({ k, type: log.type === "train" ? "Treino" : "Descanso", sub: log.type === "train" ? `(${log.workout || "-"})` : "" });
       if(rows.length >= 10) break;
     }
-
-    box.innerHTML = rows.length ? rows.map(r => `
-      <div class="row" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line)">
-        <div><b>${r.type}</b> <span class="muted">${r.sub}</span></div>
-        <div class="muted">${fmtBR(r.k)}</div>
-      </div>
-    `).join("") : `<div class="muted">Sem histórico ainda. Marque um treino/descanso.</div>`;
+    box.innerHTML = rows.length ? rows.map(r => `<div class="row" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line)"><div><b>${r.type}</b> <span class="muted">${r.sub}</span></div><div class="muted">${fmtBR(r.k)}</div></div>`).join("") : `<div class="muted">Sem histórico ainda.</div>`;
   }
 
-  // ========= Bodyweight =========
   function renderBW(){
     const arr = state.bodyweight || [];
-    if(!arr.length){
-      $("bwLast").textContent = "Último registro: (nenhum)";
-      return;
-    }
-    const last = arr[arr.length-1];
-    $("bwLast").textContent = `Último registro: ${last.kg} kg em ${fmtBR(last.date)}`;
+    if(!arr.length){ $("bwLast").textContent = "Último registro: (nenhum)"; return; }
+    const last = arr[arr.length-1]; $("bwLast").textContent = `Último registro: ${last.kg} kg em ${fmtBR(last.date)}`;
   }
 
-  // ========= Chart (no libs) =========
   const allExerciseNames = () => {
     const set = new Set();
-    ["A","B","C"].forEach(w => PROGRAM[w].exercises.forEach(e => set.add(e.name)));
+    Object.keys(state.workouts).forEach(w => { state.workouts[w].exercises.forEach(e => set.add(e.name)); });
     return Array.from(set);
   };
 
   function renderChartSelect(){
-    const sel = $("chartExercise");
-    const names = allExerciseNames();
+    const sel = $("chartExercise"); const names = allExerciseNames();
     sel.innerHTML = names.map(n => `<option value="${encodeURIComponent(n)}">${n}</option>`).join("");
-    // keep last choice
-    const last = state._chartEx || names[0];
-    sel.value = encodeURIComponent(last);
-    sel.addEventListener("change", () => {
-      state._chartEx = decodeURIComponent(sel.value);
-      save();
-      drawChart();
-    });
+    const last = state._chartEx || names[0]; sel.value = encodeURIComponent(last);
+    sel.addEventListener("change", () => { state._chartEx = decodeURIComponent(sel.value); save(); drawChart(); });
   }
 
   function getExerciseSeries(exName){
-    // collect (date, load) for exName where log has that entry load
-    const series = [];
-    const keys = Object.keys(state.logs).sort(); // chronological
+    const series = []; const keys = Object.keys(state.logs).sort();
     for(const k of keys){
-      const log = state.logs[k];
-      if(log?.type !== "train") continue;
-      const e = log.entries?.[exName];
-      const load = parseFloat(String(e?.load||"").replace(",", "."));
-      if(Number.isFinite(load) && load>0){
-        series.push({ date:k, value: load });
-      }
+      const log = state.logs[k]; if(log?.type !== "train") continue;
+      const e = log.entries?.[exName]; const load = parseFloat(String(e?.load||"").replace(",", "."));
+      if(Number.isFinite(load) && load>0){ series.push({ date:k, value: load }); }
     }
     return series;
   }
 
   function drawChart(){
-    const canvas = $("chart");
-    const ctx = canvas.getContext("2d");
-
-    // ensure crisp
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.floor(rect.width * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
-    ctx.scale(dpr, dpr);
-
+    const canvas = $("chart"); const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1; const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr); ctx.scale(dpr, dpr);
     ctx.clearRect(0,0,rect.width, rect.height);
 
-    const ex = decodeURIComponent($("chartExercise").value || "");
-    const series = getExerciseSeries(ex);
+    const ex = decodeURIComponent($("chartExercise").value || ""); const series = getExerciseSeries(ex);
+    $("chartHint").textContent = series.length ? `Mostrando ${series.length} pontos de carga (kg) para: ${ex}` : `Sem dados de carga ainda para: ${ex} (registre “carga (kg)” em um treino).`;
 
-    $("chartHint").textContent = series.length
-      ? `Mostrando ${series.length} pontos de carga (kg) para: ${ex}`
-      : `Sem dados de carga ainda para: ${ex} (registre “carga (kg)” em um treino).`;
+    const pad = 18; const W = rect.width, H = rect.height;
+    ctx.strokeStyle = "rgba(255,255,255,.08)"; ctx.lineWidth = 1;
+    for(let i=0;i<5;i++){ const y = pad + i*((H-2*pad)/4); ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke(); }
 
-    // background grid
-    const pad = 18;
-    const W = rect.width, H = rect.height;
-    ctx.strokeStyle = "rgba(255,255,255,.08)";
-    ctx.lineWidth = 1;
+    if(series.length < 2){ ctx.fillStyle = "rgba(147,164,184,.9)"; ctx.font = "12px system-ui"; ctx.fillText("Sem pontos suficientes para gráfico.", pad, H/2); return; }
 
-    for(let i=0;i<5;i++){
-      const y = pad + i*((H-2*pad)/4);
-      ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
-    }
+    const values = series.map(p=>p.value); const min = Math.min(...values); const max = Math.max(...values); const range = Math.max(1, max - min);
+    const xStep = (W - 2*pad) / (series.length - 1); const yOf = (v) => (H - pad) - ((v - min)/range) * (H - 2*pad);
 
-    if(series.length < 2){
-      // draw label
-      ctx.fillStyle = "rgba(147,164,184,.9)";
-      ctx.font = "12px system-ui";
-      ctx.fillText("Sem pontos suficientes para gráfico.", pad, H/2);
-      return;
-    }
-
-    const values = series.map(p=>p.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = Math.max(1, max - min);
-
-    const xStep = (W - 2*pad) / (series.length - 1);
-    const yOf = (v) => (H - pad) - ((v - min)/range) * (H - 2*pad);
-
-    // line
-    ctx.strokeStyle = "rgba(76,201,240,.95)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    series.forEach((p,i) => {
-      const x = pad + i*xStep;
-      const y = yOf(p.value);
-      if(i===0) ctx.moveTo(x,y);
-      else ctx.lineTo(x,y);
-    });
-    ctx.stroke();
-
-    // points
+    ctx.strokeStyle = "rgba(76,201,240,.95)"; ctx.lineWidth = 2; ctx.beginPath();
+    series.forEach((p,i) => { const x = pad + i*xStep; const y = yOf(p.value); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
     ctx.fillStyle = "rgba(167,139,250,.95)";
-    series.forEach((p,i) => {
-      const x = pad + i*xStep;
-      const y = yOf(p.value);
-      ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
-    });
-
-    // labels (min/max)
-    ctx.fillStyle = "rgba(234,241,251,.9)";
-    ctx.font = "12px system-ui";
-    ctx.fillText(`min: ${min}kg`, pad, pad-4);
-    ctx.fillText(`max: ${max}kg`, W - pad - 70, pad-4);
+    series.forEach((p,i) => { const x = pad + i*xStep; const y = yOf(p.value); ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); });
+    ctx.fillStyle = "rgba(234,241,251,.9)"; ctx.font = "12px system-ui";
+    ctx.fillText(`min: ${min}kg`, pad, pad-4); ctx.fillText(`max: ${max}kg`, W - pad - 70, pad-4);
   }
 
-  // ========= Buttons =========
   function markToday(type){
-    const k = todayKey();
-    state.logs[k] ||= { type:"", workout: state.active, entries:{} };
-    state.logs[k].type = type;
-    if(type==="train") state.logs[k].workout = state.active;
-    save();
-    renderCalendar();
-    renderHistory();
-    toast(type==="train" ? "Treino marcado hoje" : "Descanso marcado hoje");
+    const k = todayKey(); state.logs[k] ||= { type:"", workout: state.active, entries:{} };
+    state.logs[k].type = type; if(type==="train") state.logs[k].workout = state.active;
+    save(); renderCalendar(); renderHistory(); toast(type==="train" ? "Treino marcado hoje" : "Descanso marcado hoje");
   }
 
   function clearToday(){
-    const k = todayKey();
-    state.logs[k] ||= { type:"", workout: state.active, entries:{} };
-    state.logs[k].entries = {};
-    state.logs[k].type = "";
-    save();
-    render();
-    toast("Registros de hoje limpos");
+    const k = todayKey(); state.logs[k] ||= { type:"", workout: state.active, entries:{} };
+    state.logs[k].entries = {}; state.logs[k].type = "";
+    save(); render(); toast("Registros de hoje limpos");
   }
 
   function resetAll(){
     if(!confirm("Tem certeza que deseja zerar TODOS os dados?")) return;
-    state = stateDefault();
-    save();
-    render();
-    toast("Tudo zerado");
+    state = stateDefault(); save(); render(); toast("Tudo zerado");
   }
 
-  // export/import
   function exportData(){
-    const payload = JSON.stringify(state, null, 2);
-    const blob = new Blob([payload], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `treino_abc_backup_${todayKey()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast("Backup exportado");
+    const payload = JSON.stringify(state, null, 2); const blob = new Blob([payload], {type:"application/json"});
+    const url = URL.createObjectURL(blob); const a = document.createElement("a");
+    a.href = url; a.download = `treino_abc_backup_${todayKey()}.json`; a.click(); URL.revokeObjectURL(url); toast("Backup exportado");
   }
 
   function importData(){
-    const inp = document.createElement("input");
-    inp.type = "file";
-    inp.accept = "application/json";
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/json";
     inp.onchange = async () => {
-      const file = inp.files[0];
-      if(!file) return;
-      const text = await file.text();
-      try{
-        const parsed = JSON.parse(text);
-        state = { ...stateDefault(), ...parsed };
-        save();
-        render();
-        toast("Backup importado");
-      }catch(e){
-        alert("Arquivo inválido.");
-      }
-    };
-    inp.click();
+      const file = inp.files[0]; if(!file) return; const text = await file.text();
+      try{ const parsed = JSON.parse(text); state = { ...stateDefault(), ...parsed }; save(); render(); toast("Backup importado"); }
+      catch(e){ alert("Arquivo inválido."); }
+    }; inp.click();
   }
 
-  // ========= Render all =========
+  // ========= Lógica da Edição de Treinos (Modal) =========
+  let tempWk = {};
+
+  $("btnEditWorkouts").addEventListener("click", () => {
+    // Cria uma cópia temporária da base para o usuário editar livremente sem quebrar o estado original
+    tempWk = JSON.parse(JSON.stringify(state.workouts)); 
+    renderConfigUI();
+    $("modalConfig").classList.add("show");
+  });
+
+  $("btnCloseConfig").addEventListener("click", () => {
+    $("modalConfig").classList.remove("show"); // Cancela (não salva no state)
+  });
+
+  $("btnSaveConfig").addEventListener("click", () => {
+    state.workouts = tempWk; // Substitui o original pelo editado
+    if(!state.workouts[state.active]){
+        state.active = Object.keys(state.workouts)[0] || ""; // Proteção caso a aba atual tenha sido deletada
+    }
+    save();
+    render();
+    $("modalConfig").classList.remove("show");
+    toast("Treinos salvos!");
+  });
+
+  // Funções Globais expostas para o HTML poder chamar via "onclick"
+  window._updateWk = (k, field, val) => { tempWk[k][field] = val; };
+  window._updateEx = (k, idx, field, val) => { tempWk[k].exercises[idx][field] = val; };
+  window._removeEx = (k, idx) => { tempWk[k].exercises.splice(idx, 1); renderConfigUI(); };
+  window._addEx = (k) => { tempWk[k].exercises.push({name:"", target:"", type:""}); renderConfigUI(); };
+  window._removeWk = (k) => { if(confirm(`Excluir o Treino ${k}?`)) { delete tempWk[k]; renderConfigUI(); } };
+  
+  window._addWk = () => {
+    const letter = prompt("Digite a letra do novo treino (Ex: D):");
+    if(!letter) return;
+    const k = letter.toUpperCase().trim();
+    if(tempWk[k]) { alert("Este treino já existe!"); return; }
+    tempWk[k] = { title: `Treino ${k}`, subtitle: "Novo treino", exercises: [] };
+    renderConfigUI();
+  };
+
+  function renderConfigUI() {
+    const box = $("configBody");
+    box.innerHTML = "";
+    
+    if(Object.keys(tempWk).length === 0){
+        box.innerHTML = `<div class="muted">Nenhum treino configurado. Clique em Adicionar Treino.</div>`;
+        return;
+    }
+
+    Object.keys(tempWk).forEach(k => {
+      const w = tempWk[k];
+      let html = `
+      <div class="edit-block">
+        <div class="row" style="justify-content:space-between; margin-bottom:12px;">
+          <div style="font-weight:900; font-size:16px; color:var(--accent)">Treino ${k}</div>
+          <button class="danger small" onclick="window._removeWk('${k}')">Excluir Aba</button>
+        </div>
+        <div class="fields" style="grid-template-columns: 1fr 1fr; margin-bottom:16px;">
+           <div class="field"><label>Título da Aba</label><input value="${w.title}" onchange="window._updateWk('${k}', 'title', this.value)"></div>
+           <div class="field"><label>Subtítulo (Músculos)</label><input value="${w.subtitle}" onchange="window._updateWk('${k}', 'subtitle', this.value)"></div>
+        </div>
+        <div class="muted small" style="margin-bottom:8px">Lista de Exercícios:</div>
+      `;
+
+      w.exercises.forEach((ex, idx) => {
+        html += `
+        <div class="edit-row">
+          <input placeholder="Nome do exercício" value="${ex.name.replace(/"/g, '&quot;')}" onchange="window._updateEx('${k}', ${idx}, 'name', this.value)">
+          <input placeholder="Meta (ex: 4x10)" value="${ex.target.replace(/"/g, '&quot;')}" onchange="window._updateEx('${k}', ${idx}, 'target', this.value)">
+          <input placeholder="Tipo" value="${ex.type.replace(/"/g, '&quot;')}" onchange="window._updateEx('${k}', ${idx}, 'type', this.value)">
+          <button class="danger small" onclick="window._removeEx('${k}', ${idx})">✕</button>
+        </div>`;
+      });
+
+      html += `
+        <button class="ghost small" style="margin-top:12px;" onclick="window._addEx('${k}')">+ Adicionar Exercício</button>
+      </div>`;
+      
+      box.innerHTML += html;
+    });
+  }
+
   function render(){
     const d = new Date();
     $("todayLine").textContent = `Hoje: ${d.toLocaleDateString("pt-BR")} • Treino ativo: ${state.active}`;
-
-    renderWorkout();
-    renderCalendar();
-    renderHistory();
-    renderBW();
-    renderChartSelect();
-    drawChart();
+    renderWorkout(); renderCalendar(); renderHistory(); renderBW(); renderChartSelect(); drawChart();
   }
 
-  // ========= Bindings =========
-  $("tabA").addEventListener("click", ()=>setActive("A"));
-  $("tabB").addEventListener("click", ()=>setActive("B"));
-  $("tabC").addEventListener("click", ()=>setActive("C"));
-
-  $("btnQuickA").addEventListener("click", ()=>setActive("A"));
-  $("btnQuickB").addEventListener("click", ()=>setActive("B"));
-  $("btnQuickC").addEventListener("click", ()=>setActive("C"));
-
+  // Bindings
   $("btnRest").addEventListener("click", ()=> rest.running ? stopRest() : startRest());
-
   $("btnMarkTrain").addEventListener("click", ()=>markToday("train"));
   $("btnMarkRest").addEventListener("click", ()=>markToday("rest"));
   $("btnClearToday").addEventListener("click", clearToday);
-
   $("btnResetAll").addEventListener("click", resetAll);
 
   $("btnSaveBW").addEventListener("click", () => {
-    const v = $("bwValue").value.trim().replace(",",".");
-    const kg = parseFloat(v);
-    if(!Number.isFinite(kg) || kg<=0){
-      toast("Digite um peso válido");
-      return;
-    }
-    const date = todayKey();
-    state.bodyweight ||= [];
-    state.bodyweight.push({ date, kg: Number(kg.toFixed(1)) });
-    $("bwValue").value = "";
-    save();
-    renderBW();
-    toast("Peso salvo");
+    const v = $("bwValue").value.trim().replace(",","."); const kg = parseFloat(v);
+    if(!Number.isFinite(kg) || kg<=0){ toast("Digite um peso válido"); return; }
+    state.bodyweight ||= []; state.bodyweight.push({ date: todayKey(), kg: Number(kg.toFixed(1)) });
+    $("bwValue").value = ""; save(); renderBW(); toast("Peso salvo");
   });
 
   $("btnExport").addEventListener("click", exportData);
   $("btnImport").addEventListener("click", importData);
 
-  // initial
   render();
-
 })();
 </script>
 </body>
